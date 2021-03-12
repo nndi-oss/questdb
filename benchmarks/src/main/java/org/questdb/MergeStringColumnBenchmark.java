@@ -115,7 +115,7 @@ public class MergeStringColumnBenchmark {
         compiler.compile(
                 "create table append as (" +
                         "select" +
-                        " rnd_str('ABC', 'CDE', null, 'XYZ') c," +
+                        " rnd_str(4, 1, 128, 10) c," +
                         " rnd_str(100, 2048, 8192, 10) bigStr," +
                         " timestamp_sequence(518390000000L,100000L) ts" +
                         " from long_sequence(" + TABLE_SIZE + ")" +
@@ -145,173 +145,227 @@ public class MergeStringColumnBenchmark {
         }
     }
 
-    @Benchmark
-    public void testMvMemcpy() {
-        Vect.oooMergeCopyStrColumnMvMemcpy(
-                smallStrMerge.mergeIndex,
-                SMALL_MERGE_SIZE,
-                smallStrMerge.addressesTbl1.fixedAddress,
-                smallStrMerge.addressesTbl1.varAddress,
-                smallStrMerge.addressesTbl2.fixedAddress,
-                smallStrMerge.addressesTbl2.varAddress,
-                smallStrMerge.destFixAddress,
-                smallStrMerge.destVarAddress,
-                0);
-    }
+//    @Benchmark
+//    public void testBigInlAMemcpy() {
+//        Vect.oooMergeCopyStrColumnInlAMemcpy(
+//                bigStrMerge.mergeIndex,
+//                bigStrMerge.mergeIndexSize,
+//                bigStrMerge.addressesTbl1.fixedAddress,
+//                bigStrMerge.addressesTbl1.varAddress,
+//                bigStrMerge.addressesTbl2.fixedAddress,
+//                bigStrMerge.addressesTbl2.varAddress,
+//                bigStrMerge.destFixAddress,
+//                bigStrMerge.destVarAddress,
+//                0);
+//    }
+//
+//    @Benchmark
+//    public void testBigInlManMemcpy() {
+//        Vect.oooMergeCopyStrColumnInlManMemcpy(
+//                bigStrMerge.mergeIndex,
+//                bigStrMerge.mergeIndexSize,
+//                bigStrMerge.addressesTbl1.fixedAddress,
+//                bigStrMerge.addressesTbl1.varAddress,
+//                bigStrMerge.addressesTbl2.fixedAddress,
+//                bigStrMerge.addressesTbl2.varAddress,
+//                bigStrMerge.destFixAddress,
+//                bigStrMerge.destVarAddress,
+//                0);
+//    }
+//
+//    @Benchmark
+//    public void testBigInlMemcpy() {
+//        Vect.oooMergeCopyStrColumnInlMemcpy(
+//                bigStrMerge.mergeIndex,
+//                bigStrMerge.mergeIndexSize,
+//                bigStrMerge.addressesTbl1.fixedAddress,
+//                bigStrMerge.addressesTbl1.varAddress,
+//                bigStrMerge.addressesTbl2.fixedAddress,
+//                bigStrMerge.addressesTbl2.varAddress,
+//                bigStrMerge.destFixAddress,
+//                bigStrMerge.destVarAddress,
+//                0);
+//    }
+//
+//    @Benchmark
+//    public void testBigMvAMemcpy() {
+//        Vect.oooMergeCopyStrColumnMvAMemcpy(
+//                bigStrMerge.mergeIndex,
+//                bigStrMerge.mergeIndexSize,
+//                bigStrMerge.addressesTbl1.fixedAddress,
+//                bigStrMerge.addressesTbl1.varAddress,
+//                bigStrMerge.addressesTbl2.fixedAddress,
+//                bigStrMerge.addressesTbl2.varAddress,
+//                bigStrMerge.destFixAddress,
+//                bigStrMerge.destVarAddress,
+//                0);
+//    }
+//
+//    @Benchmark
+//    public void testBigMvManMemcpy() {
+//        Vect.oooMergeCopyStrColumnMvManMemcpy(
+//                bigStrMerge.mergeIndex,
+//                bigStrMerge.mergeIndexSize,
+//                bigStrMerge.addressesTbl1.fixedAddress,
+//                bigStrMerge.addressesTbl1.varAddress,
+//                bigStrMerge.addressesTbl2.fixedAddress,
+//                bigStrMerge.addressesTbl2.varAddress,
+//                bigStrMerge.destFixAddress,
+//                bigStrMerge.destVarAddress,
+//                0);
+//    }
+//
+//    @Benchmark
+//    public void testBigMvMemcpy() {
+//        Vect.oooMergeCopyStrColumnMvMemcpy(
+//                bigStrMerge.mergeIndex,
+//                bigStrMerge.mergeIndexSize,
+//                bigStrMerge.addressesTbl1.fixedAddress,
+//                bigStrMerge.addressesTbl1.varAddress,
+//                bigStrMerge.addressesTbl2.fixedAddress,
+//                bigStrMerge.addressesTbl2.varAddress,
+//                bigStrMerge.destFixAddress,
+//                bigStrMerge.destVarAddress,
+//                0);
+//    }
+//
+//    @Benchmark
+//    public void testInlAMemcpy() {
+//        Vect.oooMergeCopyStrColumnInlAMemcpy(
+//                smallStrMerge.mergeIndex,
+//                SMALL_MERGE_SIZE,
+//                smallStrMerge.addressesTbl1.fixedAddress,
+//                smallStrMerge.addressesTbl1.varAddress,
+//                smallStrMerge.addressesTbl2.fixedAddress,
+//                smallStrMerge.addressesTbl2.varAddress,
+//                smallStrMerge.destFixAddress,
+//                smallStrMerge.destVarAddress,
+//                0);
+//    }
+//
+//    @Benchmark
+//    public void testInlManMemcpy() {
+//        Vect.oooMergeCopyStrColumnInlManMemcpy(
+//                smallStrMerge.mergeIndex,
+//                SMALL_MERGE_SIZE,
+//                smallStrMerge.addressesTbl1.fixedAddress,
+//                smallStrMerge.addressesTbl1.varAddress,
+//                smallStrMerge.addressesTbl2.fixedAddress,
+//                smallStrMerge.addressesTbl2.varAddress,
+//                smallStrMerge.destFixAddress,
+//                smallStrMerge.destVarAddress,
+//                0);
+//    }
+//
+//    @Benchmark
+//    public void testInlMemcpy() {
+//        Vect.oooMergeCopyStrColumnInlMemcpy(
+//                smallStrMerge.mergeIndex,
+//                SMALL_MERGE_SIZE,
+//                smallStrMerge.addressesTbl1.fixedAddress,
+//                smallStrMerge.addressesTbl1.varAddress,
+//                smallStrMerge.addressesTbl2.fixedAddress,
+//                smallStrMerge.addressesTbl2.varAddress,
+//                smallStrMerge.destFixAddress,
+//                smallStrMerge.destVarAddress,
+//                0);
+//    }
+//
+//    @Benchmark
+//    public void testMvAMemcpy() {
+//        Vect.oooMergeCopyStrColumnMvAMemcpy(
+//                smallStrMerge.mergeIndex,
+//                SMALL_MERGE_SIZE,
+//                smallStrMerge.addressesTbl1.fixedAddress,
+//                smallStrMerge.addressesTbl1.varAddress,
+//                smallStrMerge.addressesTbl2.fixedAddress,
+//                smallStrMerge.addressesTbl2.varAddress,
+//                smallStrMerge.destFixAddress,
+//                smallStrMerge.destVarAddress,
+//                0);
+//    }
+
+//    @Benchmark
+//    public void testMvManMemcpy() {
+//        Vect.oooMergeCopyStrColumnMvManMemcpy(
+//                smallStrMerge.mergeIndex,
+//                SMALL_MERGE_SIZE,
+//                smallStrMerge.addressesTbl1.fixedAddress,
+//                smallStrMerge.addressesTbl1.varAddress,
+//                smallStrMerge.addressesTbl2.fixedAddress,
+//                smallStrMerge.addressesTbl2.varAddress,
+//                smallStrMerge.destFixAddress,
+//                smallStrMerge.destVarAddress,
+//                0);
+//    }
+//
+//    @Benchmark
+//    public void testMvMemcpy() {
+//        Vect.oooMergeCopyStrColumnMvMemcpy(
+//                smallStrMerge.mergeIndex,
+//                SMALL_MERGE_SIZE,
+//                smallStrMerge.addressesTbl1.fixedAddress,
+//                smallStrMerge.addressesTbl1.varAddress,
+//                smallStrMerge.addressesTbl2.fixedAddress,
+//                smallStrMerge.addressesTbl2.varAddress,
+//                smallStrMerge.destFixAddress,
+//                smallStrMerge.destVarAddress,
+//                0);
+//    }
+
+//    @Benchmark
+//    public void testSetMemoryLong() {
+//        Vect.setMemoryLong(
+//                bigStrMerge.destVarAddress,
+//                -1L,
+//                (bigStrMerge.addressesTbl1.varSizeBytes + bigStrMerge.addressesTbl2.varSizeBytes) / Long.BYTES
+//        );
+//    }
+//
+//    @Benchmark
+//    public void testSetMemoryInt() {
+//        Vect.setMemoryInt(
+//                bigStrMerge.destVarAddress,
+//                -1,
+//                (bigStrMerge.addressesTbl1.varSizeBytes + bigStrMerge.addressesTbl2.varSizeBytes) / Integer.BYTES
+//        );
+//    }
 
     @Benchmark
-    public void testBigMvMemcpy() {
-        Vect.oooMergeCopyStrColumnMvMemcpy(
-                bigStrMerge.mergeIndex,
-                bigStrMerge.mergeIndexSize,
-                bigStrMerge.addressesTbl1.fixedAddress,
-                bigStrMerge.addressesTbl1.varAddress,
-                bigStrMerge.addressesTbl2.fixedAddress,
-                bigStrMerge.addressesTbl2.varAddress,
-                bigStrMerge.destFixAddress,
+    public void testSetMemoryShort() {
+        Vect.setMemoryShort(
                 bigStrMerge.destVarAddress,
-                0);
+                (short) -1,
+                (bigStrMerge.addressesTbl1.varSizeBytes + bigStrMerge.addressesTbl2.varSizeBytes) / Short.BYTES
+        );
     }
 
     @Benchmark
-    public void testMvAMemcpy() {
-        Vect.oooMergeCopyStrColumnMvAMemcpy(
-                smallStrMerge.mergeIndex,
-                SMALL_MERGE_SIZE,
-                smallStrMerge.addressesTbl1.fixedAddress,
-                smallStrMerge.addressesTbl1.varAddress,
-                smallStrMerge.addressesTbl2.fixedAddress,
-                smallStrMerge.addressesTbl2.varAddress,
-                smallStrMerge.destFixAddress,
-                smallStrMerge.destVarAddress,
-                0);
-    }
-
-    @Benchmark
-    public void testBigMvAMemcpy() {
-        Vect.oooMergeCopyStrColumnMvAMemcpy(
-                bigStrMerge.mergeIndex,
-                bigStrMerge.mergeIndexSize,
-                bigStrMerge.addressesTbl1.fixedAddress,
-                bigStrMerge.addressesTbl1.varAddress,
-                bigStrMerge.addressesTbl2.fixedAddress,
-                bigStrMerge.addressesTbl2.varAddress,
-                bigStrMerge.destFixAddress,
+    public void testSetMemoryDouble() {
+        Vect.setMemoryDouble(
                 bigStrMerge.destVarAddress,
-                0);
+                -1.0,
+                (bigStrMerge.addressesTbl1.varSizeBytes + bigStrMerge.addressesTbl2.varSizeBytes) / Double.BYTES
+        );
     }
-
-    @Benchmark
-    public void testMvManMemcpy() {
-        Vect.oooMergeCopyStrColumnMvManMemcpy(
-                smallStrMerge.mergeIndex,
-                SMALL_MERGE_SIZE,
-                smallStrMerge.addressesTbl1.fixedAddress,
-                smallStrMerge.addressesTbl1.varAddress,
-                smallStrMerge.addressesTbl2.fixedAddress,
-                smallStrMerge.addressesTbl2.varAddress,
-                smallStrMerge.destFixAddress,
-                smallStrMerge.destVarAddress,
-                0);
-    }
-
-    @Benchmark
-    public void testBigMvManMemcpy() {
-        Vect.oooMergeCopyStrColumnMvManMemcpy(
-                bigStrMerge.mergeIndex,
-                bigStrMerge.mergeIndexSize,
-                bigStrMerge.addressesTbl1.fixedAddress,
-                bigStrMerge.addressesTbl1.varAddress,
-                bigStrMerge.addressesTbl2.fixedAddress,
-                bigStrMerge.addressesTbl2.varAddress,
-                bigStrMerge.destFixAddress,
-                bigStrMerge.destVarAddress,
-                0);
-    }
-
-    @Benchmark
-    public void testInlMemcpy() {
-        Vect.oooMergeCopyStrColumnInlMemcpy(
-                smallStrMerge.mergeIndex,
-                SMALL_MERGE_SIZE,
-                smallStrMerge.addressesTbl1.fixedAddress,
-                smallStrMerge.addressesTbl1.varAddress,
-                smallStrMerge.addressesTbl2.fixedAddress,
-                smallStrMerge.addressesTbl2.varAddress,
-                smallStrMerge.destFixAddress,
-                smallStrMerge.destVarAddress,
-                0);
-    }
-
-    @Benchmark
-    public void testBigInlMemcpy() {
-        Vect.oooMergeCopyStrColumnInlMemcpy(
-                bigStrMerge.mergeIndex,
-                bigStrMerge.mergeIndexSize,
-                bigStrMerge.addressesTbl1.fixedAddress,
-                bigStrMerge.addressesTbl1.varAddress,
-                bigStrMerge.addressesTbl2.fixedAddress,
-                bigStrMerge.addressesTbl2.varAddress,
-                bigStrMerge.destFixAddress,
-                bigStrMerge.destVarAddress,
-                0);
-    }
-
-    @Benchmark
-    public void testInlAMemcpy() {
-        Vect.oooMergeCopyStrColumnInlAMemcpy(
-                smallStrMerge.mergeIndex,
-                SMALL_MERGE_SIZE,
-                smallStrMerge.addressesTbl1.fixedAddress,
-                smallStrMerge.addressesTbl1.varAddress,
-                smallStrMerge.addressesTbl2.fixedAddress,
-                smallStrMerge.addressesTbl2.varAddress,
-                smallStrMerge.destFixAddress,
-                smallStrMerge.destVarAddress,
-                0);
-    }
-
-    @Benchmark
-    public void testBigInlAMemcpy() {
-        Vect.oooMergeCopyStrColumnInlAMemcpy(
-                bigStrMerge.mergeIndex,
-                bigStrMerge.mergeIndexSize,
-                bigStrMerge.addressesTbl1.fixedAddress,
-                bigStrMerge.addressesTbl1.varAddress,
-                bigStrMerge.addressesTbl2.fixedAddress,
-                bigStrMerge.addressesTbl2.varAddress,
-                bigStrMerge.destFixAddress,
-                bigStrMerge.destVarAddress,
-                0);
-    }
-
-    @Benchmark
-    public void testInlManMemcpy() {
-        Vect.oooMergeCopyStrColumnInlManMemcpy(
-                smallStrMerge.mergeIndex,
-                SMALL_MERGE_SIZE,
-                smallStrMerge.addressesTbl1.fixedAddress,
-                smallStrMerge.addressesTbl1.varAddress,
-                smallStrMerge.addressesTbl2.fixedAddress,
-                smallStrMerge.addressesTbl2.varAddress,
-                smallStrMerge.destFixAddress,
-                smallStrMerge.destVarAddress,
-                0);
-    }
-
-    @Benchmark
-    public void testBigInlManMemcpy() {
-        Vect.oooMergeCopyStrColumnInlManMemcpy(
-                bigStrMerge.mergeIndex,
-                bigStrMerge.mergeIndexSize,
-                bigStrMerge.addressesTbl1.fixedAddress,
-                bigStrMerge.addressesTbl1.varAddress,
-                bigStrMerge.addressesTbl2.fixedAddress,
-                bigStrMerge.addressesTbl2.varAddress,
-                bigStrMerge.destFixAddress,
-                bigStrMerge.destVarAddress,
-                0);
-    }
+//
+//    @Benchmark
+//    public void testSetVarColumnRefs32Bit() {
+//        Vect.setVarColumnRefs32Bit(
+//                bigStrMerge.destVarAddress,
+//                0,
+//                (bigStrMerge.addressesTbl1.varSizeBytes + bigStrMerge.addressesTbl2.varSizeBytes) / 8
+//        );
+//    }
+//
+//    @Benchmark
+//    public void testSetVarColumnRefs64Bit() {
+//        Vect.setVarColumnRefs64Bit(
+//                bigStrMerge.destVarAddress,
+//                0,
+//                (bigStrMerge.addressesTbl1.varSizeBytes + bigStrMerge.addressesTbl2.varSizeBytes) / 8
+//        );
+//    }
 
     private ColumnAddress getAddresses(TableReader readerTbl1, String columnName) {
         ColumnAddress columnAddress = new ColumnAddress();

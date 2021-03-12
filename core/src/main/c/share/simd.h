@@ -2,11 +2,13 @@
 // Created by alpel on 05/03/2021.
 //
 
-#ifndef ZLIB_SIMD_H
-#define ZLIB_SIMD_H
+#ifndef QDB_SIMD_H
+#define QDB_SIMD_H
+
+#include "func_dispatcher.h"
 
 #ifdef ENABLE_MULTIVERSION
-#define __SIMD_MULTIVERSION__ __attribute__((target_clones("avx2","avx","sse4.1","default")))
+#define __SIMD_MULTIVERSION__ __attribute__((target_clones("avx2","avx","avx512f","default")))
 #else
 #define __SIMD_MULTIVERSION__
 #endif
@@ -25,5 +27,4 @@
 
 
 
-
-#endif //ZLIB_SIMD_H
+#endif //QDB_SIMD_H

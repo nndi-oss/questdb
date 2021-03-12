@@ -27,6 +27,7 @@
 #include "util.h"
 #include "simd.h"
 #include "asmlib/asmlib.h"
+#include "ooo.h"
 
 #ifdef __APPLE__
 #define __JLONG_REINTERPRET_CAST__(type, var)  (type)var
@@ -501,14 +502,14 @@ inline void make_timestamp_index(const int64_t *data, int64_t low, int64_t high,
 template<class T>
 __SIMD_MULTIVERSION__
 void merge_copy_var_column(
-        index_t *merge_index,
+        index_t * __restrict__ merge_index,
         int64_t merge_index_size,
-        int64_t *src_data_fix,
+        int64_t * __restrict__ src_data_fix,
         char *src_data_var,
-        int64_t *src_ooo_fix,
-        char *src_ooo_var,
+        int64_t * __restrict__ src_ooo_fix,
+        char * __restrict__ src_ooo_var,
         int64_t *dst_fix,
-        char *dst_var,
+        char * __restrict__ dst_var,
         int64_t dst_var_offset,
         T mult
 ) {
@@ -534,15 +535,15 @@ void merge_copy_var_column(
 template<class T>
 __SIMD_MULTIVERSION__
 void merge_copy_var_column_top(
-        index_t *merge_index,
+        index_t * __restrict__ merge_index,
         int64_t merge_index_size,
-        int64_t *src_data_fix,
+        int64_t * __restrict__ src_data_fix,
         int64_t src_data_fix_offset,
-        char *src_data_var,
-        int64_t *src_ooo_fix,
-        char *src_ooo_var,
-        int64_t *dst_fix,
-        char *dst_var,
+        char * __restrict__ src_data_var,
+        int64_t * __restrict__ src_ooo_fix,
+        char * __restrict__ src_ooo_var,
+        int64_t * __restrict__ dst_fix,
+        char * __restrict__ dst_var,
         int64_t dst_var_offset,
         T mult
 ) {
@@ -568,18 +569,16 @@ void merge_copy_var_column_top(
 
 template<class T>
 __SIMD_MULTIVERSION__
-inline void set_memory_vanilla(T *addr, T value, int64_t count) {
-    for (int64_t i = 0; i < count; i++) {
+inline void set_memory_vanilla(T * __restrict__ addr, const T value, int64_t count) {
+    for (int i = 0; i < count; ++i) {
         addr[i] = value;
     }
 }
 
-template<class T>
 __SIMD_MULTIVERSION__
-inline void set_var_refs(int64_t *addr, int64_t offset, int64_t count) {
-    auto inc = sizeof(T);
+inline void set_var_refs(int64_t *addr, int64_t offset, int64_t count, int bitshift) {
     for (int64_t i = 0; i < count; i++) {
-        addr[i] = offset + i * inc;
+        addr[i] = offset + (i << bitshift);
     }
 }
 
@@ -693,7 +692,7 @@ Java_io_questdb_std_Vect_oooMergeCopyBinColumn(JNIEnv *env, jclass cl,
             reinterpret_cast<char *>(src_ooo_var),
             reinterpret_cast<int64_t *>(dst_fix),
             reinterpret_cast<char *>(dst_var),
-            __JLONG_REINTERPRET_CAST__(int64_t,dst_var_offset),
+            __JLONG_REINTERPRET_CAST__(int64_t, dst_var_offset),
             1
     );
 }
@@ -876,29 +875,53 @@ __SIMD_MULTIVERSION__
 JNIEXPORT void JNICALL
 Java_io_questdb_std_Vect_setMemoryLong(JNIEnv *env, jclass cl, jlong pData, jlong value,
                                        jlong count) {
-    set_memory_vanilla<int64_t>(
-            reinterpret_cast<int64_t *>(pData),
-            __JLONG_REINTERPRET_CAST__(int64_t,value),
-            (int64_t) (count)
-    );
+    switch (value) {
+        case -1l:
+            // -1L is 0xffffffffffffffffffffff
+            // so it is same as setting all bytes to 0xff
+            memset(reinterpret_cast<int64_t *>(pData), 0xff, count * 8);
+            break;
+        case 0l:
+            memset(reinterpret_cast<int64_t *>(pData), 0x0, count * 8);
+            break;
+        default:
+            set_memory_vanilla<int64_t>(
+                    reinterpret_cast<int64_t *>(pData),
+                    __JLONG_REINTERPRET_CAST__(int64_t, value),
+                    (int64_t) (count)
+            );
+            break;
+    }
 }
 
 __SIMD_MULTIVERSION__
 JNIEXPORT void JNICALL
 Java_io_questdb_std_Vect_setMemoryInt(JNIEnv *env, jclass cl, jlong pData, jint value,
                                       jlong count) {
-    set_memory_vanilla<jint>(
-            reinterpret_cast<jint *>(pData),
-            value,
-            (int64_t) (count)
-    );
+    switch (value) {
+        case -1:
+            // -1L is 0xfffffffff
+            // so it is same as setting all bytes to 0xff
+            A_memset(reinterpret_cast<int64_t *>(pData), 0xff, count * 4);
+            break;
+        case 0:
+            A_memset(reinterpret_cast<int64_t *>(pData), 0x0, count * 4);
+            break;
+        default:
+            set_memory_vanilla<jint>(
+                    reinterpret_cast<jint *>(pData),
+                    value,
+                    (int64_t) (count)
+            );
+            break;
+    }
 }
 
 __SIMD_MULTIVERSION__
 JNIEXPORT void JNICALL
 Java_io_questdb_std_Vect_setMemoryDouble(JNIEnv *env, jclass cl, jlong pData, jdouble value,
                                          jlong count) {
-    set_memory_vanilla<jdouble>(
+    set_memory_vanilla_double(
             reinterpret_cast<jdouble *>(pData),
             value,
             (int64_t) (count)
@@ -931,10 +954,11 @@ __SIMD_MULTIVERSION__
 JNIEXPORT void JNICALL
 Java_io_questdb_std_Vect_setVarColumnRefs32Bit(JNIEnv *env, jclass cl, jlong pData, jlong offset,
                                                jlong count) {
-    set_var_refs<int32_t>(
+    set_var_refs(
             reinterpret_cast<int64_t *>(pData),
-            __JLONG_REINTERPRET_CAST__(int64_t,offset),
-            __JLONG_REINTERPRET_CAST__(int64_t,count)
+            __JLONG_REINTERPRET_CAST__(int64_t, offset),
+            __JLONG_REINTERPRET_CAST__(int64_t, count),
+            2
     );
 }
 
@@ -942,10 +966,11 @@ __SIMD_MULTIVERSION__
 JNIEXPORT void JNICALL
 Java_io_questdb_std_Vect_setVarColumnRefs64Bit(JNIEnv *env, jclass cl, jlong pData, jlong offset,
                                                jlong count) {
-    set_var_refs<int64_t>(
+    set_var_refs(
             reinterpret_cast<int64_t *>(pData),
-            __JLONG_REINTERPRET_CAST__(int64_t,offset),
-            __JLONG_REINTERPRET_CAST__(int64_t,count)
+            __JLONG_REINTERPRET_CAST__(int64_t, offset),
+            __JLONG_REINTERPRET_CAST__(int64_t, count),
+            3
     );
 }
 
@@ -955,7 +980,7 @@ Java_io_questdb_std_Vect_oooCopyIndex(JNIEnv *env, jclass cl, jlong pIndex, jlon
                                       jlong pDest) {
     copy_index(
             reinterpret_cast<index_t *>(pIndex),
-            __JLONG_REINTERPRET_CAST__(int64_t,index_size),
+            __JLONG_REINTERPRET_CAST__(int64_t, index_size),
             reinterpret_cast<int64_t *>(pDest)
     );
 }
@@ -966,18 +991,13 @@ Java_io_questdb_std_Vect_oooCopyIndex(JNIEnv *env, jclass cl, jlong pIndex, jlon
 /// ===================================================================
 
 inline __attribute__((always_inline))
-void man_memcpy(char *destb, const char *srcb, size_t count) {
-    for (size_t i = 0; i < count; i++) {
-        destb[i] = srcb[i];
-    }
+void man_memcpy(char * __restrict__ destb, const char * __restrict__ srcb, size_t count) {
+    char *d = destb;
+    const char *s = srcb;
+    while (count--)
+        *d++ = *s++;
 }
 
-inline __attribute__((always_inline))
-void man_mv_memcpy(char *destb, const char *srcb, size_t count) {
-    for (size_t i = 0; i < count; i++) {
-        destb[i] = srcb[i];
-    }
-}
 
 
 #define oooMergeCopyStrColumnMv(_SUFFIX, _MEMCPYSTYLE) \
@@ -1107,12 +1127,14 @@ oooMergeCopyStrColumnMv(MvMemcpy, memcpy)
 
 oooMergeCopyStrColumnMv(MvAMemcpy, A_memcpy)
 
-oooMergeCopyStrColumnMv(MvManMemcpy, man_mv_memcpy)
+oooMergeCopyStrColumnMv(MvManMemcpy, man_memcpy)
+#else
+
 #endif
 
 oooMergeCopyStrColumnInline(InlMemcpy, memcpy)
 
 oooMergeCopyStrColumnInline(InlAMemcpy, A_memcpy)
 
-oooMergeCopyStrColumnInline(InlManMemcpy, man_mv_memcpy)
+oooMergeCopyStrColumnInline(InlManMemcpy, man_memcpy)
 
