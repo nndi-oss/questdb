@@ -14,7 +14,6 @@ set(
         VCL_FILES
         src/main/c/share/vec_agg.cpp
         src/main/c/share/vec_ts_agg.cpp
-        src/main/c/share/ooo_multiversion.cpp
 )
 
 set(
@@ -69,8 +68,8 @@ elseif (UNIX)
         )
     else (CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
         MESSAGE("Building for GNU/Linux")
-#        MESSAGE("Enabling multiversion compilation")
-#        add_compile_definitions(ENABLE_MULTIVERSION)
+        MESSAGE("Enabling multiversion compilation")
+        add_compile_definitions(ENABLE_MULTIVERSION)
 #        add_compile_definitions(ENABLE_ASMLIB)
 #        add_compile_definitions(ENABLE_MANUAL_MEMCPY)
 
