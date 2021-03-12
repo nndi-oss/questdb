@@ -63,6 +63,7 @@ typedef struct index_t {
     }
 } index_t;
 
+#define MEMSET_SWITCH_SIZE 8*1024*1024
 #define RADIX_SHUFFLE 0
 
 #if RADIX_SHUFFLE == 0
@@ -351,7 +352,9 @@ inline void merge_shuffle(jlong src1, jlong src2, jlong dest, jlong index, jlong
 
 template<class T>
 __SIMD_MULTIVERSION__
-inline void merge_shuffle_internal_top(const T *src1, const T *src2, T *dest, const index_t * __restrict__ index, int64_t count, int64_t topOffset) {
+inline void
+merge_shuffle_internal_top(const T *src1, const T *src2, T *dest, const index_t *__restrict__ index, int64_t count,
+                           int64_t topOffset) {
     const T *sources[] = {src2, src1};
     int64_t sz = sizeof(T);
     int64_t shifts[] = {0, static_cast<int64_t>(topOffset / sz)};
@@ -458,7 +461,8 @@ void k_way_merge_long_index(
 
 template<class T>
 __SIMD_MULTIVERSION__
-inline int64_t binary_search(const T * __restrict__ data, const int64_t value, int64_t low, int64_t high, const int64_t scan_dir) {
+inline int64_t
+binary_search(const T *__restrict__ data, const int64_t value, int64_t low, int64_t high, const int64_t scan_dir) {
     while (low < high) {
         int64_t mid = (low + high) / 2;
         T midVal = data[mid];
@@ -491,7 +495,8 @@ inline int64_t binary_search(const T * __restrict__ data, const int64_t value, i
 }
 
 __SIMD_MULTIVERSION__
-inline void make_timestamp_index(const int64_t * __restrict__ data, const int64_t low, const int64_t high, index_t * __restrict__ dest) {
+inline void make_timestamp_index(const int64_t *__restrict__ data, const int64_t low, const int64_t high,
+                                 index_t *__restrict__ dest) {
     for (int64_t l = low; l <= high; l++) {
         dest[l - low].ts = data[l];
         dest[l - low].i = l | (1ull << 63);
@@ -502,14 +507,14 @@ inline void make_timestamp_index(const int64_t * __restrict__ data, const int64_
 template<class T>
 __SIMD_MULTIVERSION__
 inline void merge_copy_var_column(
-        const index_t * __restrict__ merge_index,
+        const index_t *__restrict__ merge_index,
         const int64_t merge_index_size,
-        const int64_t * __restrict__ src_data_fix,
-        const char * __restrict__ src_data_var,
-        const int64_t * __restrict__ src_ooo_fix,
-        const char * __restrict__ src_ooo_var,
-        int64_t * __restrict__ dst_fix,
-        char * __restrict__ dst_var,
+        const int64_t *__restrict__ src_data_fix,
+        const char *__restrict__ src_data_var,
+        const int64_t *__restrict__ src_ooo_fix,
+        const char *__restrict__ src_ooo_var,
+        int64_t *__restrict__ dst_fix,
+        char *__restrict__ dst_var,
         int64_t dst_var_offset,
         T mult
 ) {
@@ -535,15 +540,15 @@ inline void merge_copy_var_column(
 template<class T>
 __SIMD_MULTIVERSION__
 inline void merge_copy_var_column_top(
-        const index_t * __restrict__  merge_index,
+        const index_t *__restrict__ merge_index,
         const int64_t merge_index_size,
-        const int64_t * __restrict__ src_data_fix,
+        const int64_t *__restrict__ src_data_fix,
         const int64_t src_data_fix_offset,
-        const char * __restrict__ src_data_var,
-        const int64_t * __restrict__ src_ooo_fix,
-        const char * __restrict__  src_ooo_var,
-        int64_t * __restrict__ dst_fix,
-        char * __restrict__ dst_var,
+        const char *__restrict__ src_data_var,
+        const int64_t *__restrict__ src_ooo_fix,
+        const char *__restrict__ src_ooo_var,
+        int64_t *__restrict__ dst_fix,
+        char *__restrict__ dst_var,
         int64_t dst_var_offset,
         const T mult
 ) {
@@ -569,31 +574,57 @@ inline void merge_copy_var_column_top(
 
 template<class T>
 __SIMD_MULTIVERSION__
-inline void set_memory_vanilla(T * __restrict__ addr, const T value, int64_t count) {
+inline void set_memory_vanilla(T *__restrict__ addr, const T value, int64_t count) {
     for (int i = 0; i < count; ++i) {
         addr[i] = value;
     }
 }
 
 __SIMD_MULTIVERSION__
-inline void set_memory_vanilla_double(double * __restrict__ addr, const double value, int64_t count) {
-    Vec8d v = Vec8d(value, value, value, value, value, value, value, value);
-    for (int i = 0, n = count / 8; i < n; i++) {
-        v.store(addr + i*8);
+inline void set_memory_vanilla_double(double *__restrict__ addr, const double value,  int64_t count) {
+    Vec2d v = Vec2d(value, value);
+    auto n = count / 2;
+    for (int i = 0; i < n; i++) {
+        v.store_nt(addr);
+        addr += 2;
+    }
+    _mm_mfence();
+
+    // tail
+    if (count % 2 > 0) {
+        *addr = value;
+    }
+}
+
+__SIMD_MULTIVERSION__
+inline void set_memory_vanilla_int(jint *__restrict__ addr, const int32_t value, const int64_t count) {
+    Vec16i v = Vec16i(value, value, value, value, value, value, value, value, value, value, value, value, value, value,
+                      value, value);
+    auto n = count / 16;
+    for (int i = 0; i < n; i++) {
+        v.store(addr);
+        addr += 16;
+    }
+    _mm_mfence();
+
+    // tail
+    n *= 16;
+    while (n++ < count) {
+        *addr++ = value;
     }
 }
 
 template<class T>
 __SIMD_MULTIVERSION__
-inline void set_var_refs(int64_t * __restrict__ addr, const int64_t offset, const  int64_t count) {
+inline void set_var_refs(int64_t *__restrict__ addr, const int64_t offset, const int64_t count) {
     const auto size = sizeof(T);
-    for (int64_t i = 0; i < count; i++) {
+    for (int64_t i = 0; i < count / 8; i++) {
         addr[i] = offset + i * size;
     }
 }
 
 __SIMD_MULTIVERSION__
-inline void copy_index(const index_t * __restrict__ index, const int64_t index_size, int64_t * __restrict__ dest) {
+inline void copy_index(const index_t *__restrict__ index, const int64_t index_size, int64_t *__restrict__ dest) {
     for (int64_t i = 0; i < index_size; i++) {
         dest[i] = index[i].ts;
     }
@@ -912,17 +943,25 @@ Java_io_questdb_std_Vect_setMemoryInt(JNIEnv *env, jclass cl, jlong pData, jint 
         case -1:
             // -1L is 0xfffffffff
             // so it is same as setting all bytes to 0xff
-            A_memset(reinterpret_cast<int64_t *>(pData), 0xff, count * sizeof(jint));
+            memset(reinterpret_cast<int64_t *>(pData), 0xff, count * sizeof(jint));
             break;
         case 0:
-            A_memset(reinterpret_cast<int64_t *>(pData), 0x0, count * sizeof(jint));
+            memset(reinterpret_cast<int64_t *>(pData), 0x0, count * sizeof(jint));
             break;
         default:
-            set_memory_vanilla<jint>(
-                    reinterpret_cast<jint *>(pData),
-                    value,
-                    (int64_t) (count)
-            );
+            if (count > 96 * 8 * 1024 * 2) {
+                set_memory_vanilla_int(
+                        reinterpret_cast<jint *>(pData),
+                        value,
+                        (int64_t) (count)
+                );
+            } else {
+                set_memory_vanilla<jint>(
+                        reinterpret_cast<jint *>(pData),
+                        value,
+                        (int64_t) (count)
+                );
+            }
             break;
     }
 }
@@ -931,11 +970,20 @@ __SIMD_MULTIVERSION__
 JNIEXPORT void JNICALL
 Java_io_questdb_std_Vect_setMemoryDouble(JNIEnv *env, jclass cl, jlong pData, jdouble value,
                                          jlong count) {
-    set_memory_vanilla_double(
-            reinterpret_cast<jdouble *>(pData),
-            value,
-            (int64_t) (count)
-    );
+    if (count > MEMSET_SWITCH_SIZE / sizeof(jdouble)) {
+        set_memory_vanilla_double(
+                //        set_memory_vanilla<jdouble>(
+                reinterpret_cast<jdouble *>(pData),
+                value,
+                (int64_t) (count)
+        );
+    } else {
+        set_memory_vanilla<jdouble>(
+                reinterpret_cast<jdouble *>(pData),
+                value,
+                (int64_t) (count)
+        );
+    }
 }
 
 __SIMD_MULTIVERSION__
@@ -999,13 +1047,12 @@ Java_io_questdb_std_Vect_oooCopyIndex(JNIEnv *env, jclass cl, jlong pIndex, jlon
 /// ===================================================================
 
 inline __attribute__((always_inline))
-void man_memcpy(char * __restrict__ destb, const char * __restrict__ srcb, size_t count) {
+void man_memcpy(char *__restrict__ destb, const char *__restrict__ srcb, size_t count) {
     char *d = destb;
     const char *s = srcb;
     while (count--)
         *d++ = *s++;
 }
-
 
 
 #define oooMergeCopyStrColumnMv(_SUFFIX, _MEMCPYSTYLE) \
@@ -1131,6 +1178,7 @@ Java_io_questdb_std_Vect_oooMergeCopyStrColumn##_SUFFIX(JNIEnv *env, jclass cl, 
 }                                                          \
 
 #ifdef ENABLE_MULTIVERSION
+
 oooMergeCopyStrColumnMv(MvMemcpy, memcpy)
 
 oooMergeCopyStrColumnMv(MvAMemcpy, A_memcpy)

@@ -91,8 +91,8 @@ public:
     }
     // Member function to store into array (unaligned)
     void store(void * p) const {
-        _mm_storeu_si128((__m128i*)p,     y0);
-        _mm_storeu_si128((__m128i*)p + 1, y1);
+        _mm_stream_si128((__m128i*)p,     y0);
+        _mm_stream_si128((__m128i*)p + 1, y1);
     }
     // Member function to store into array, aligned by 32
     // You may use store_a instead of store if you are certain that p points to an address

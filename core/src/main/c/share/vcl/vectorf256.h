@@ -1475,6 +1475,10 @@ public:
     void store(double * p) const {
         _mm256_storeu_pd(p, ymm);
     }
+    // Member function to store into array (unaligned) with non-temporal memory hint
+    void store_nt(double * p) const {
+        _mm256_stream_pd(p, ymm);
+    }
     // Member function to store into array, aligned by 32
     // You may use store_a instead of store if you are certain that p points to an address
     // divisible by 32

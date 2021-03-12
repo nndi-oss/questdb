@@ -1127,6 +1127,11 @@ public:
         _mm_storeu_pd(p,   y0);
         _mm_storeu_pd(p+2, y1);
     }
+    // Member function to store into array (unaligned) with non-temporal memory hint
+    void store_nt(double * p) const {
+        _mm_stream_pd(p,   y0);
+        _mm_stream_pd(p+2, y1);
+    }
     // Member function to store into array, aligned by 32
     // You may use store_a instead of store if you are certain that p points to an address
     // divisible by 32

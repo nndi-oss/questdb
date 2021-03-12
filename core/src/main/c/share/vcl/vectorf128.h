@@ -1516,6 +1516,10 @@ public:
     void store(double * p) const {
         _mm_storeu_pd(p, xmm);
     }
+    // Member function to store into array (unaligned) with non-temporal memory hint
+    void store_nt(double * p) const {
+        _mm_stream_pd(p, xmm);
+    }
     // Member function to store into array, aligned by 16
     // "store_a" is faster than "store" on older Intel processors (Pentium 4, Pentium M, Core 1,
     // Merom, Wolfdale) and Atom, but not on other processors from Intel, AMD or VIA.

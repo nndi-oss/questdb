@@ -313,14 +313,14 @@ public class MergeStringColumnBenchmark {
 //                0);
 //    }
 
-//    @Benchmark
-//    public void testSetMemoryLong() {
-//        Vect.setMemoryLong(
-//                bigStrMerge.destVarAddress,
-//                -1L,
-//                (bigStrMerge.addressesTbl1.varSizeBytes + bigStrMerge.addressesTbl2.varSizeBytes) / Long.BYTES
-//        );
-//    }
+    @Benchmark
+    public void testSetMemoryLong() {
+        Vect.setMemoryLong(
+                bigStrMerge.destVarAddress,
+                -1L,
+                (bigStrMerge.addressesTbl1.varSizeBytes + bigStrMerge.addressesTbl2.varSizeBytes) / Long.BYTES
+        );
+    }
 //
 //    @Benchmark
 //    public void testSetMemoryInt() {
